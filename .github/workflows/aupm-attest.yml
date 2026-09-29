@@ -1,0 +1,42 @@
+name: aupm-attest
+
+# Third-party donor rehearsal for AuPM on Algorand TestNet (DEPLOY-GUIDE Phase 9).
+# Trigger on push and pull_request only: the facilitator classifies scheduled
+# runs as DEV traffic.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  attest:
+    runs-on: ubuntu-24.04
+    env:
+      # The aupm-attest action has no network input. Its donor code reads
+      # NETWORK from the environment and defaults to MainNet.
+      NETWORK: testnet
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1, pinned to a full commit SHA.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: AuPM attestation (donates on TestNet)
+        uses: TriplEight/AuPM/.github/actions/aupm-attest@__AUPM_MASTER_SHA__
+        with:
+          endpoint: ${{ vars.AUPM_ENDPOINT }}
+          lockfile: package-lock.json
+          donate: 'true'
+          donor-mnemonic: ${{ secrets.AUPM_DONOR_MNEMONIC }}
+
+      - name: Upload the attestation
+        # actions/upload-artifact __UPLOAD_ARTIFACT_VERSION__, pinned to a full commit SHA.
+        uses: actions/upload-artifact@__UPLOAD_ARTIFACT_SHA__
+        with:
+          name: aupm-attestation
+          path: aupm-attestation.json
+          if-no-files-found: error
