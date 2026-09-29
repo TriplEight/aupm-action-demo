@@ -5,7 +5,7 @@ name: aupm-attest
 # runs as DEV traffic.
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 permissions:
@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
 
       - name: AuPM attestation (donates on TestNet)
-        uses: TriplEight/AuPM/.github/actions/aupm-attest@__AUPM_MASTER_SHA__
+        uses: TriplEight/AuPM/.github/actions/aupm-attest@1295f69c5cdb6365ae3210caed236b533993667e # master after PR #41
         with:
           endpoint: ${{ vars.AUPM_ENDPOINT }}
           lockfile: package-lock.json
@@ -34,8 +34,8 @@ jobs:
           donor-mnemonic: ${{ secrets.AUPM_DONOR_MNEMONIC }}
 
       - name: Upload the attestation
-        # actions/upload-artifact __UPLOAD_ARTIFACT_VERSION__, pinned to a full commit SHA.
-        uses: actions/upload-artifact@__UPLOAD_ARTIFACT_SHA__
+        # actions/upload-artifact v7.0.1, pinned to a full commit SHA.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: aupm-attestation
           path: aupm-attestation.json
