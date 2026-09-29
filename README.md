@@ -13,4 +13,3 @@ key in the `AUPM_DONOR_MNEMONIC` secret. The job uploads the signed attestation 
 - The action fails open: a failed payment logs a warning, and the job stays green.
 
 TestNet only. The reviews on the TestNet server are unread rehearsal records (AuPM ADR 0012).
-# aupm-donor-demo
