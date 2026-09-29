@@ -2,7 +2,7 @@
 
 A third-party donor rehearsal for AuPM on Algorand TestNet.
 
-Each push to `main` and each pull request runs the `aupm-attest` action. The action posts
+Each push to `master` and each pull request runs the `aupm-attest` action. The action posts
 `package-lock.json` to the AuPM server and pays for the reviewed entries with the TestNet donor
 key in the `AUPM_DONOR_MNEMONIC` secret. The job uploads the signed attestation as the
 `aupm-attestation` artifact.
