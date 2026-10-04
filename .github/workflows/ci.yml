@@ -1,0 +1,62 @@
+name: CI
+run-name: "CI: npm ci + donate to reviewed packages${{ inputs.network == 'testnet' && ' (TestNet rehearsal)' || '' }}"
+
+# The AuPM Action replaces the `npm ci` step. It installs through the AuPM
+# registry, falls back to npm, and donates to the reviewed packages.
+# Push and pull_request runs donate real USDC on Algorand MainNet.
+# A TestNet rehearsal runs only from workflow_dispatch with network: testnet.
+# No schedule trigger: the facilitator classifies scheduled runs as DEV traffic.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'mainnet donates real USDC. testnet is a rehearsal.'
+        type: choice
+        options: [mainnet, testnet]
+        default: mainnet
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: "npm ci + donate to reviewed packages${{ inputs.network == 'testnet' && ' (TestNet rehearsal)' || '' }}"
+    runs-on: ubuntu-24.04
+    env:
+      # The donor code in the Action reads NETWORK. Set it on every run.
+      NETWORK: ${{ inputs.network || 'mainnet' }}
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1, pinned to a full commit SHA.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        # actions/setup-node v7.0.0, pinned to a full commit SHA.
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+
+      - name: npm ci + donate to reviewed packages
+        uses: TriplEight/AuPM/.github/actions/aupm@3a3d31ba46dfc45e884b0fcbb725001a1094ca0c # master after PR #65
+        with:
+          endpoint: ${{ env.NETWORK == 'testnet' && vars.AUPM_ENDPOINT_TESTNET || 'https://aupm.fyi' }}
+          donate: 'true'
+          donor-secret: ${{ env.NETWORK == 'testnet' && secrets.AUPM_DONOR_MNEMONIC_TESTNET || secrets.AUPM_DONOR_MNEMONIC_MAINNET }}
+
+      - name: Check the installed dependencies
+        run: npm ls --omit=dev --depth=0
+
+      - name: Upload the signed receipt
+        # actions/upload-artifact v7.0.1, pinned to a full commit SHA.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: aupm-receipt-${{ env.NETWORK }}
+          path: aupm-receipt.json
+          # warn, not error: with no donor secret (a fork pull_request) the
+          # Action writes no receipt, and the job must stay green.
+          if-no-files-found: warn
