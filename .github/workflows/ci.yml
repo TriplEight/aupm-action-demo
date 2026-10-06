@@ -42,7 +42,7 @@ jobs:
           node-version: 22
 
       - name: npm ci + donate to reviewed packages
-        uses: TriplEight/AuPM/.github/actions/aupm@230fb38d2008a4ef20789c06ed073fdbef071325 # master after PR #67
+        uses: TriplEight/AuPM/.github/actions/aupm@a4d641c35afb49e723604ca6641469ee8700f266 # master after PR #82
         with:
           endpoint: ${{ env.NETWORK == 'testnet' && vars.AUPM_ENDPOINT_TESTNET || 'https://aupm.fyi' }}
           donate: 'true'
