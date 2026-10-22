@@ -1,7 +1,7 @@
 # aupm-action-demo
 
-The AuPM Action installs your npm packages through the AuPM registry and donates USDC to the
-reviewers of the packages that a human reviewed. This repository is a working example.
+The AuPM Action installs your npm packages through the AuPM registry. It donates USDC for each
+package that a human reviewed. This repository is a working example.
 
 Cost: free for packages with no review. A reviewed package costs 10,000 microUSDC ($0.01) per
 lockfile entry at the default price.
@@ -18,7 +18,7 @@ lockfile entry at the default price.
 
 1. Fork this repository. To use your own repository, copy `.github/workflows/ci.yml` instead.
 2. In a fork, open the Actions tab. Click "I understand my workflows, go ahead and enable them".
-3. Create the donor key:
+3. Create the donor key. If you already have `~/.config/aupm/donor.key`, skip this step.
 
    ```bash
    npm install -g aupm-cli
