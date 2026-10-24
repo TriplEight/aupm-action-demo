@@ -1,8 +1,46 @@
 # aupm-action-demo
 
-A demo of the AuPM GitHub Action in a third-party repository.
+The AuPM Action installs your npm packages through the AuPM registry. It donates USDC for each
+package that a human reviewed. This repository is a working example.
 
-The AuPM Action replaces the `npm ci` step of a workflow:
+Cost: free for packages with no review. A reviewed package costs 10,000 microUSDC ($0.01) per
+lockfile entry at the default price.
+
+## Prerequisites
+
+- A GitHub repository with a `package-lock.json`.
+- Node 22 or later.
+- A funded donor account to donate. See
+  [the donor procedure](https://github.com/TriplEight/AuPM/blob/main/docs/ONBOARDING.md#2-donor)
+  for funding.
+
+## Quickstart
+
+1. Fork this repository. To use your own repository, copy `.github/workflows/ci.yml` instead.
+2. In a fork, open the Actions tab. Click "I understand my workflows, go ahead and enable them".
+3. Create the donor key. If you already have `~/.config/aupm/donor.key`, skip this step.
+
+   ```bash
+   npm install -g aupm-cli
+   aupm donor init
+   ```
+
+   The key file is `~/.config/aupm/donor.key`.
+4. Store the key as a repository secret:
+
+   ```bash
+   gh secret set AUPM_DONOR_MNEMONIC_MAINNET < ~/.config/aupm/donor.key
+   ```
+
+   Without `gh`: open Settings > Secrets and variables > Actions > New repository secret. Never
+   paste the words into a workflow file, an issue or a log.
+5. Push a commit, or run the workflow `CI` from the Actions tab.
+
+WARNING: a run with the MainNet secret donates real USDC on Algorand MainNet.
+
+## The workflow
+
+The Action replaces the `npm ci` step:
 
 ```yaml
 # before
@@ -16,21 +54,48 @@ The AuPM Action replaces the `npm ci` step of a workflow:
     donor-secret: ${{ secrets.AUPM_DONOR_MNEMONIC_MAINNET }}
 ```
 
-The Action does these steps:
+Copy the pin from `.github/workflows/ci.yml` of this repository. Never use a branch name, a tag
+or a short SHA.
 
-1. It runs `npm ci` through the AuPM registry. Packages with no review install free.
-2. If the AuPM registry fails, it logs a warning and runs plain `npm ci`.
-3. It checks the lockfile against the reviewed packages and writes the signed receipt
-   `aupm-receipt.json`.
-4. With `donate: 'true'`, it donates 1,000 microUSDC for each reviewed package in the lockfile.
+For free use, omit `donate` and `donor-secret`. The Action then installs through AuPM and
+donates nothing.
 
-An install failure fails the job, as with plain `npm ci`. An AuPM failure never fails the job.
-The Action does not change the Node version or `PATH` of later steps.
+The Action runs `npm ci` through the AuPM registry. If the AuPM registry fails, it logs a
+warning and runs plain `npm ci`. An install failure fails the job, as with plain `npm ci`. An
+AuPM failure never fails the job. The Action does not change the Node version or `PATH` of later
+steps. The input reference is in
+[the Action README](https://github.com/TriplEight/AuPM/blob/main/.github/actions/aupm/README.md).
 
-The workflow is `.github/workflows/ci.yml`. The job uploads the signed receipt as the
-`aupm-receipt-<network>` artifact.
+## Verify the run
 
-WARNING: push and pull_request runs donate real USDC on Algorand MainNet.
+A paid run shows these results:
+
+- The annotation `::notice::AuPM donation: <N> microUSDC, settlement txid <txid>`.
+- The table "AuPM donation" in the job summary.
+- The artifact `aupm-receipt-<network>`. It holds the signed `aupm-receipt.json`.
+
+A missing notice means that nothing was paid. A failed donation logs a `::warning::`, and the
+job stays green.
+
+> [!NOTE]
+> A pull request from a branch of the same repository gets the secret, so its run pays. The merge to the default branch is a push, and that run pays again. You can put `[skip ci]` in the merge commit message to skip the payment.
+
+- Do not add a `schedule` trigger to a workflow that donates.
+- Do not re-run a job that paid. The re-run donates again.
+- A pull_request from a fork gets no secrets. The Action installs the packages, logs a
+  `::warning::`, writes no receipt and donates nothing. The job stays green.
+
+## Cost of one run
+
+A run donates 10,000 microUSDC ($0.01) for each entry of `package-lock.json` that has a review on
+the server of that network. The multiplier range is x0.1 (1,000 microUSDC, $0.001) to x100. A
+package with no review is free. On MainNet, this lockfile has 30 reviewed entries. One run at
+x1 donates 300,000 microUSDC ($0.30).
+
+The two servers have different review sets. The cost of one run differs on each network.
+
+To count the reviewed entries before a run, run the Action with no donor secret. It logs
+`N reviewed package(s) withheld`. The run costs N × 10,000 microUSDC at x1.
 
 ## Networks
 
@@ -46,32 +111,16 @@ a MainNet run.
 The job sets `NETWORK` to the selected network. The donor code in the Action reads it. A TestNet
 secret never pays on MainNet, and a MainNet secret never pays on TestNet.
 
-## Cost of one run
-
-A run donates 1,000 microUSDC for each entry of `package-lock.json` that has a review on the
-server of that network. A package with no review is free. The two servers have different review
-sets, so the cost of one run is different on each network. On MainNet, this lockfile has 30
-reviewed entries, so one run donates 30,000 microUSDC.
-
-To count the reviewed entries before a run, run the Action with no
-donor secret. It logs `N reviewed package(s) withheld`. The run costs N × 1,000 microUSDC.
-
-Each push to `master` and each pull_request update donates again. A re-run of a job that paid
-donates again. To push a commit with no run, put `[skip ci]` in the commit message.
-
-## Set up
-
-1. Add the repository secrets (Settings, Secrets and variables, Actions). Each value is the
-   25-word mnemonic of an Algorand account:
-   - `AUPM_DONOR_MNEMONIC_MAINNET`: a MainNet donor that holds USDC and a little ALGO.
-   - `AUPM_DONOR_MNEMONIC_TESTNET`: a TestNet donor, for rehearsals only.
-2. Add the repository variable `AUPM_ENDPOINT_TESTNET` with the TestNet server origin.
-3. Keep the Action pinned to a full 40-character commit SHA of `TriplEight/AuPM`. Never use a
-   branch name or a short SHA.
-
-## Run on TestNet
+## Rehearse on TestNet
 
 A TestNet run donates TestNet USDC (ASA 10458941). It has no real-money value.
+
+Before the run, set these values in Settings > Secrets and variables > Actions:
+
+- The secret `AUPM_DONOR_MNEMONIC_TESTNET`: a TestNet donor with TestNet USDC and a little
+  TestNet ALGO.
+- The variable `AUPM_ENDPOINT_TESTNET`: the TestNet server origin. If it is empty, the Action
+  installs from the npm registry, logs a warning and donates nothing.
 
 In the GitHub web UI:
 
@@ -82,29 +131,15 @@ In the GitHub web UI:
 
 With the GitHub CLI:
 
-    gh workflow run ci.yml --repo TriplEight/aupm-action-demo -f network=testnet
+```bash
+gh workflow run ci.yml --repo TriplEight/aupm-action-demo -f network=testnet
+```
 
-Before the run, make sure that:
+The artifact of a TestNet run is `aupm-receipt-testnet`. To run on MainNet by hand, set `network`
+to `mainnet`. This donates real USDC.
 
-- The secret `AUPM_DONOR_MNEMONIC_TESTNET` holds a TestNet donor with TestNet USDC and a little
-  TestNet ALGO.
-- The variable `AUPM_ENDPOINT_TESTNET` holds the TestNet server origin. If it is empty, the
-  Action installs from the npm registry, logs a warning and donates nothing.
-
-The artifact of a TestNet run is `aupm-receipt-testnet`.
-
-To run on MainNet by hand, use the same steps with `network` set to `mainnet`. This donates real
-USDC.
-
-## Results
-
-- A paid run logs `::notice::AuPM donation: <N> microUSDC, settlement txid <txid>`. The job
-  summary shows the same line.
-- A failed donation logs a `::warning::`, and the job stays green. A missing notice is the signal
-  that nothing was paid.
-- A pull_request from a fork gets no secrets. The Action installs the packages, logs a
-  `::warning::`, writes no receipt and donates nothing. The job stays green.
+## Lockfile
 
 `package.json` and `package-lock.json` are the dependencies of `actions/checkout` v7.0.1. The
-reviews on the TestNet server are unread rehearsal records (AuPM ADR 0012). The reviews on the
-MainNet server are human reviews.
+reviews on the TestNet server are unread rehearsal records. The reviews on the MainNet server are
+human reviews.
